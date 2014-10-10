@@ -4,69 +4,6 @@ import sys
 import copy
 
 #t3 ai
-#gets a board and finds the best move according to the corner strategy,
-#  which is the only strategy I know that doesnt involve brute forcing the board
-def find_move(board, player):
-	
-	opponent = ""
-	if player == 'x':
-		opponent = 'o'
-	else:
-		opponent = 'x'
-
-
-	#board conditions
-
-	#unblocked win move ~ win
-	near_complete = board.find_combos(player,2)
-	blocked = board.find_combos(opponent,1)
-	winnable = list(set(near_complete) - set(blocked))
-	if winnable:
-		for tile in board.tile_grouping[winnable[0]]:
-			if not board.tile_occupation(tile):
-				return tile
-
-	#opponent about to win ~ block
-	opponent_near_complete = board.find_combos(opponent,2)
-	contesting = board.find_combos(player,1)
-	need_to_block = list(set(opponent_near_complete) - set(contesting))
-	if need_to_block:
-		for tile in board.tile_grouping[need_to_block[0]]:
-			if not board.tile_occupation(tile):
-				return tile
-
-	corners = {1 : 9, 3 : 7, 7 : 3, 9: 1}
-
-	#if opponent has one x in a corner, the cornering stragegy
-	#  doesnt work. In order to pull a tie, need to go to the center and then a side
-	#Note, this is a little hacky, maybe the brute force method would have been better...
-	if len(board.player_totals[opponent]) == 1 and len(board.player_totals[player]) == 0:
-		if board.player_totals[opponent][0] in corners:
-			return 5
-	if len(board.player_totals[opponent]) == 2 and len(board.player_totals[player]) == 1:
-		if board.player_totals[opponent][0] in corners and board.player_totals[opponent][1] in corners:
-			return 2
-
-		
-	#get a corner, prefer one across from one already owned
-	corners_owned = []
-	for tile in corners:
-		if board.tile_occupation(tile) == player:
-			corners_owned.append(tile)
-
-	for tile in corners_owned:
-		if not board.tile_occupation(corners[tile]):
-			return corners[tile]
-
-	#try to get any corner
-	for tile in corners:
-		if not board.tile_occupation(tile):
-			return tile
-
-	#get whatever is left ~ this should only happen in ties
-	for tile in range(1,10):
-		if not board.tile_occupation(tile):
-			return tile
 
 #Using the minimax alg
 ##  recursivly find the best board combination
@@ -75,29 +12,32 @@ def mini_max_move(board,player):
 	free_pos = board.list_free_loc()
 	turn = 10-len(free_pos)
 
-	#board is empty.... everything can be tied
+	#board is empty.... everything can be tied so just pick
+	# corner and save some processing time
 	if turn == 1:
 		return 1
 
-	print free_pos
 	v_points = 0
 	v_points_loc = 0
 
-	#p_x = (player == 'x')
-
-
+	#determine minimizing player
 	opponent = 'o' if player == 'x' else 'x'
 	maxing = True 
 
+	sys.stdout.write("Plotting...")
+	sys.stdout.flush()
 
-	print player+" "+opponent
 
 	return mm3_rec(board,player,opponent,maxing,0,True)
 
+
+#Minimax alg
+## Recursivly solve board for victory. Shorter win cases are prioritized
 def mm3_rec(board,player,opponent,maxing,turns,root):
 	t_win = board.check_win()
 	free_locs = board.list_free_loc()
 
+	#Base case, if player (maximizer) wins, a positive value is returned, else neg
 	if t_win == player:
 		return 11-turns
 	elif t_win == opponent:
@@ -105,17 +45,21 @@ def mm3_rec(board,player,opponent,maxing,turns,root):
 	elif not free_locs:
 		return 0
 
+	#Maximize score if maximizer, otherwise try to find minimum score
 	if maxing:
-		best_v = -2
+		best_v = -12
 		best_v_loc = 0
 
+		#make all possible moves, then find best value score
 		for move in free_locs:
 			test_b = copy.deepcopy(board)
 			test_b.set_pos(player,move)
 			val = mm3_rec(test_b,player,opponent,False,turns+1,False)
 
 			if root:
-				print "_"+str(val)+" "+str(move)
+				sys.stdout.write(".")
+				sys.stdout.flush()
+				#print "_"+str(val)+" "+str(move)
 
 			if val > best_v:
 				best_v = val
@@ -128,7 +72,7 @@ def mm3_rec(board,player,opponent,maxing,turns,root):
 
 	else:
 
-		best_v = 2
+		best_v = 12
 		best_v_loc = 0
 
 		for move in free_locs:
@@ -137,7 +81,8 @@ def mm3_rec(board,player,opponent,maxing,turns,root):
 			val = mm3_rec(test_b,player,opponent,True,turns+1,False)
 
 			if root:
-				print "_"+str(val)+" "+str(move)
+				sys.stdout.write(".")
+				sys.stdout.flush()
 
 			if val < best_v:
 				best_v = val
@@ -147,62 +92,6 @@ def mm3_rec(board,player,opponent,maxing,turns,root):
 			return best_v_loc
 		else:
 			return best_v
-
-
-
-
-
-
-#minimax assumes there is at least 1 move left
-def mm2_rec(board,player,opponent,maxing,turn,root):
-	#base~ check to see if win condition has been met
-	##      if so, if the current player won or not
-	#win = board.check_win()
-
-	free_locs = board.list_free_loc()
-	if len(free_locs) == 1:
-		test_b = copy.deepcopy(board)
-		test_b.set_pos(player if maxing else opponent,free_locs[0])
-
-		t_win = test_b.check_win()
-		if not t_win:
-			return 0
-		elif t_win == player and maxing or t_win != player and not maxing:
-			return 20 - turn
-		else:
-			return turn - 20
- 
-	v_points = float("inf")
-	v_points_loc = 0
-
-	if maxing:
-		v_points *= -1
-
-
-	for move in free_locs:
-		test_b = copy.deepcopy(board)
-		test_b.set_pos(player,move)
-		#note the switch
-		val = mm2_rec(test_b,opponent,player,not maxing,turn+1,False)
-
-		if root:
-			print "_"*turn+str(val)+" "+str(move)
-
-			#raw_input("what")
-
-	
-		if maxing and val > v_points:
-			v_points = val
-			v_points_loc = move
-		elif not maxing and val < v_points:
-			v_points = val
-			v_points_loc = move
-
-
-	if root:
-		return v_points_loc
-	else:
-		return v_points
 
 
 
