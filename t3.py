@@ -1,6 +1,7 @@
 #tic tac toe
 
 import sys
+import copy
 
 #t3 ai
 #gets a board and finds the best move according to the corner strategy,
@@ -66,6 +67,143 @@ def find_move(board, player):
 	for tile in range(1,10):
 		if not board.tile_occupation(tile):
 			return tile
+
+#Using the minimax alg
+##  recursivly find the best board combination
+def mini_max_move(board,player):
+
+	free_pos = board.list_free_loc()
+	turn = 10-len(free_pos)
+
+	#board is empty.... everything can be tied
+	if turn == 1:
+		return 1
+
+	print free_pos
+	v_points = 0
+	v_points_loc = 0
+
+	#p_x = (player == 'x')
+
+
+	opponent = 'o' if player == 'x' else 'x'
+	maxing = True 
+
+
+	print player+" "+opponent
+
+	return mm3_rec(board,player,opponent,maxing,0,True)
+
+def mm3_rec(board,player,opponent,maxing,turns,root):
+	t_win = board.check_win()
+	free_locs = board.list_free_loc()
+
+	if t_win == player:
+		return 11-turns
+	elif t_win == opponent:
+		return turns-11
+	elif not free_locs:
+		return 0
+
+	if maxing:
+		best_v = -2
+		best_v_loc = 0
+
+		for move in free_locs:
+			test_b = copy.deepcopy(board)
+			test_b.set_pos(player,move)
+			val = mm3_rec(test_b,player,opponent,False,turns+1,False)
+
+			if root:
+				print "_"+str(val)+" "+str(move)
+
+			if val > best_v:
+				best_v = val
+				best_v_loc = move
+
+		if root:
+			return best_v_loc
+		else:
+			return best_v
+
+	else:
+
+		best_v = 2
+		best_v_loc = 0
+
+		for move in free_locs:
+			test_b = copy.deepcopy(board)
+			test_b.set_pos(opponent,move)
+			val = mm3_rec(test_b,player,opponent,True,turns+1,False)
+
+			if root:
+				print "_"+str(val)+" "+str(move)
+
+			if val < best_v:
+				best_v = val
+				best_v_loc = move
+
+		if root:
+			return best_v_loc
+		else:
+			return best_v
+
+
+
+
+
+
+#minimax assumes there is at least 1 move left
+def mm2_rec(board,player,opponent,maxing,turn,root):
+	#base~ check to see if win condition has been met
+	##      if so, if the current player won or not
+	#win = board.check_win()
+
+	free_locs = board.list_free_loc()
+	if len(free_locs) == 1:
+		test_b = copy.deepcopy(board)
+		test_b.set_pos(player if maxing else opponent,free_locs[0])
+
+		t_win = test_b.check_win()
+		if not t_win:
+			return 0
+		elif t_win == player and maxing or t_win != player and not maxing:
+			return 20 - turn
+		else:
+			return turn - 20
+ 
+	v_points = float("inf")
+	v_points_loc = 0
+
+	if maxing:
+		v_points *= -1
+
+
+	for move in free_locs:
+		test_b = copy.deepcopy(board)
+		test_b.set_pos(player,move)
+		#note the switch
+		val = mm2_rec(test_b,opponent,player,not maxing,turn+1,False)
+
+		if root:
+			print "_"*turn+str(val)+" "+str(move)
+
+			#raw_input("what")
+
+	
+		if maxing and val > v_points:
+			v_points = val
+			v_points_loc = move
+		elif not maxing and val < v_points:
+			v_points = val
+			v_points_loc = move
+
+
+	if root:
+		return v_points_loc
+	else:
+		return v_points
+
 
 
 #encapulate board so it can have a persistant board object
@@ -154,7 +292,7 @@ class Board:
 			print "bad player"
 			return False
 		if not this.locations[pos].isdigit():
-			print "spot already occupied!"
+			#print "spot already occupied!"
 			return False
 
 		this.locations[pos] = player
@@ -185,19 +323,27 @@ class Board:
 
 	def check_win(this):
 		if this.find_combos('x',3):
-			print  "X wins!"
-			return "X"
+			#print  "X wins!"
+			return "x"
 
 		if this.find_combos('o',3):
-			print "O wins!"
-			print this.find_combos('o',3)
-			return "O"
+			#print "O wins!"
+			#print this.find_combos('o',3)
+			return "o"
 
 		return False
 
+	def list_free_loc(this):
+		free = []
+		for val in range(1,10):
+			if this.locations[val].isdigit(): 
+				free.append(val)
+
+		return free
 
 
 '''
+
 print "testtesttest"
 b = Board()
 b.draw_board()	
@@ -206,12 +352,15 @@ b.set_pos('x',10)
 #b.set_pos('x',5)
 #b.set_pos('o',2)
 #b.set_pos('o',3)
-b.set_pos('o',5)
+b.set_pos('o',1)
 b.set_pos('o',9)
 b.draw_board()
+
+print b.locations
+print b.list_free_loc()
 b.check_win()
 
-print find_move(b,'o')
+print mini_max_move(b,'o')
 '''
 
 
@@ -275,14 +424,16 @@ while True:
 					else:
 						print "Cant place to "+loc
 			else:
-				board.set_pos(current_player, find_move(board, current_player))
+
+				board.set_pos(current_player, mini_max_move(board, current_player))
 
 
 			#leave if someone wins
 			if board.check_win():
 				board.draw_board()
 				won = True
-				board.check_win() 
+				print board.check_win().upper()+" Wins!"
+				 
 				break
 
 		if not won:
@@ -298,7 +449,7 @@ while True:
 	
 
 
-	
+
 
 	
 
